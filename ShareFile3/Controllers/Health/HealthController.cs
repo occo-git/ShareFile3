@@ -6,6 +6,18 @@ namespace ShareFile.Controllers.Health
     [Route("health")]
     public class HealthController : ControllerBase
     {
+        [HttpGet("maxfilesize")]
+        public IActionResult GetMaxFileSize()
+        {
+            return Ok(new { MaxFileSize = Configuration.MainConfig.MaxFileSize });
+        }
+
+        //[HttpGet("imagetag")]
+        //public IActionResult GetImageTag()
+        //{
+        //    return Ok(new { ImageTag = Configuration.BuildConfig.build_docker.IMAGE_TAG });
+        //}
+
         [HttpGet]
         public IActionResult Get()
         {

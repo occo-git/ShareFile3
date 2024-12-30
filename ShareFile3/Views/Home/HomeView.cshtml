@@ -1,0 +1,379 @@
+﻿<!DOCTYPE html>
+
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>Share File</title>
+    <link rel="icon" href="favicon.png" type="image/png">
+    <link rel="stylesheet" href="/styles1.css" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+</head>
+<body>
+    <table class="main-table">
+        <tr>
+        </tr>
+        <tr>
+            <td style="width:50%" />
+            <td>
+                <label class="main-title">Share&nbsp;File</label>
+            </td>
+            <td style="width:50%">
+                <div class="main-version" id="version"></div>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="3">
+                <div class="container">
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <table class="table100">
+                            <tr>
+                                <td style="width:50%" />
+                                <td>
+                                    <table class="table100">
+                                        <tr>
+                                            <td>
+                                                <label class="custom-label" id="fileTitle">File</label>
+                                            </td>
+                                            <td>
+                                                <label class="custom-label" id="linkTitle">Link</label>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="title-td">Name</td>
+                                            <td class="title-td">Duration</td>
+                                        </tr>
+                                        <tr>
+                                            <td><div id="fileName"></div></td>
+                                            <td>
+                                                <table class="table100 pad10">
+                                                    <tr>
+                                                        <td>
+                                                            <input type="radio" name="duration" id="duration10" value="10" required />
+                                                            <label for="duration10" class="file-duration-min">10min</label>
+                                                        </td>
+                                                        <td>
+                                                            <input type="radio" name="duration" id="duration20" value="20" required />
+                                                            <label for="duration20" class="file-duration-min">20min</label>
+                                                        </td>
+                                                        <td>
+                                                            <input type="radio" name="duration" id="duration30" value="30" required />
+                                                            <label for="duration30" class="file-duration-min">30min</label>
+                                                        </td>
+                                                        <td>
+                                                            <input type="radio" name="duration" id="duration60" value="60" required />
+                                                            <label for="duration60" class="file-duration-min">1hour</label>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="title-td">Size</td>
+                                            <td class="title-td" id="status">Status</td>
+                                        </tr>
+                                        <tr>
+                                            <td><div id="fileSize"></div></td>
+                                            <td>
+                                                <div id="progressContainer">
+                                                    <div id="progressBar"></div>
+                                                </div>
+                                                <div id="message"></div>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <div id="fileInputDiv">
+                                                    <label class="custom-button" id="fileInputLabel" for="fileInput">Select a File</label>
+                                                    <input class="file-input" id="fileInput" type="file" name="file" required />
+                                                    <div class="drop-area" id="dropArea">
+                                                        Drag and drop a File here
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div id="submitDiv">
+                                                    <label class="custom-button" id="submitLabel" for="submitBtn">Create a Link!</label>
+                                                    <button class="submit-btn" id="submitBtn" type="submit"></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                                <td style="width:50%" />
+                            </tr>
+                        </table>
+                    </form>
+
+                    <div id="url"></div>
+                    <button id="copyUrl" class="custom-button">Copy Link</button>
+
+                    <div id="serverProcessing">
+                        <div id="spinner"></div>
+                        <div id="server-message">Server processing ...</div>
+                    </div>
+
+                    <div id="qrCode"></div>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <script>
+
+        // jQuery
+        $(document).ready(function () {
+
+            const rootStyles = getComputedStyle(document.documentElement);
+            const tdColor = rootStyles.getPropertyValue('--td-color');
+            const warningColor = rootStyles.getPropertyValue('--warning-color');
+            const errorColor = rootStyles.getPropertyValue('--error-color');
+            const textColor = rootStyles.getPropertyValue('--text-color');
+            const qrColor = rootStyles.getPropertyValue('--qr-color');
+            const qrBackColor = rootStyles.getPropertyValue('--qr-back-color');
+
+            //----------------------
+            // Adjust layout to window size
+            //----------------------
+            function adjustLayout() {
+                if ($(window).width() < $(window).height()) {
+                    $('#mobile-view').show();
+                    $('#desktop-view').hide();
+                } else {
+                    $('#desktop-view').show();
+                    $('#mobile-view').hide();
+                }
+            }
+            //adjustLayout();
+            //$(window).resize(adjustLayout);
+
+            //----------------------
+            // Drag and Drop
+            //----------------------
+            const dropArea = $('#dropArea');
+            const fileInput = $('#fileInput');
+            const events = ['dragenter', 'dragover', 'dragleave', 'drop'];
+            events.forEach(eventName => {
+                dropArea.on(eventName, function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                });
+            });
+            dropArea.on('dragenter dragover', () => dropArea.addClass('hover'));
+            dropArea.on('dragleave drop', () => dropArea.removeClass('hover'));
+            dropArea.on('click', () => fileInput.click());
+            dropArea.on('drop', function (e) {
+                const files = e.originalEvent.dataTransfer.files;
+                handleFile(files[0]);
+            });
+
+            //----------------------
+            // Reset form
+            //----------------------
+            function resetForm() {
+                $('#fileInputLabel').show();
+                $('#dropArea').show();
+                $('#submitLabel').hide();
+                $('#fileName').text('~');
+                $('#fileSize').text('0 MB (max 0 MB)');
+                $('#duration10').prop('checked', true);
+                $('#progressContainer').hide();
+                $('#status').css('background', tdColor);
+                $('#status').text('Status');
+                $('#message').css('color', textColor);
+                $('#message').show();
+                $('#message').text('~');
+                $('#serverProcessing').hide();
+                $('#url').hide();
+                $('#url').text(null);
+                $('#copyUrl').hide();
+                $('#qrCode').text(null);
+            }
+            $('#fileInput').val(null); // reset selected file
+            resetForm();
+
+            //----------------------
+            // SVG
+            //----------------------
+            function modifySVG(qrCode) {
+                return qrCode
+                    .replace(/#FFFFFF/g, qrBackColor)
+                    .replace(/#000000/g, qrColor);
+            }
+            function addRoundedCornersToRects(svg) {
+                let firstRectProcessed = false; // Счетчик для отслеживания первого элемента
+
+                return svg.replace(/<rect([^>]*?)\/?>/g, (match, attrs) => {
+                    if (!firstRectProcessed) {
+                        // Для первого rect добавляем rx="12" и ry="12"
+                        firstRectProcessed = true; // Помечаем, что первый элемент уже обработан
+                        return `<rect${attrs} rx="12" ry="12"></rect>`;
+                    } else {
+                        // Для остальных rect добавляем rx="1" и ry="1", если их нет
+                        if (!attrs.includes('rx=') && !attrs.includes('ry=')) {
+                            return `<rect${attrs} rx="2" ry="2"></rect>`;
+                        }
+                    }
+                    return match; // Если атрибуты уже есть, возвращаем оригинальный элемент
+                });
+            }
+
+            //----------------------
+            // Apply settings
+            //----------------------
+            let maxFileSizeMB = 0;
+            // Set image tag (app version)
+            $.get('/Health/imagetag', function (data) {
+                $('#version').text(data.imageTag);
+            });
+            // Set maximum file size
+            $.get('/Health/maxfilesize', function (data) {
+                maxFileSizeMB = (data.maxFileSize / 1024 / 1024);
+                $('#fileSize').text(`0 MB (max ${maxFileSizeMB} MB)`);
+            });
+
+            //----------------------
+            // File selected
+            //----------------------
+            $('#fileInput').on('change', function(event) {
+                const file = event.target.files[0];
+                handleFile(file);
+            });
+
+            function handleFile(file) {
+                resetForm();
+                if (file)
+                {
+                    // Set file name
+                    $('#fileName').text(`${file.name}`)
+
+                    // Get selected file size (without uploading)
+                    const fileSizeInKB = (file.size / 1024).toFixed(2);
+                    const fileSizeInMB = (fileSizeInKB / 1024).toFixed(2);
+                    if (fileSizeInMB > 0)
+                        $('#fileSize').text(`${fileSizeInMB} MB (max ${maxFileSizeMB} MB)`);
+                    else
+                        $('#fileSize').text(`${fileSizeInKB} KB (max ${maxFileSizeMB} MB)`);
+
+                    if (maxFileSizeMB == 0 || file.size == 0)
+                    {
+                        $('#status').css('background', warningColor);
+                        $('#message').show();
+                        $('#message').css('color', warningColor);
+                        $('#message').text('File is empty!');
+                    }
+                    else
+                    {
+                        if (fileSizeInMB <= maxFileSizeMB)
+                            $('#submitLabel').show(); // show Submit button
+                        else
+                        {
+                            $('#status').css('background', warningColor);
+                            $('#message').show();
+                            $('#message').css('color', warningColor);
+                            $('#message').text('File is too big!');
+                        }
+                    }
+                }
+                else
+                {
+                    $('#fileName').text('~');
+                    $('#fileSize').text(`0 MB (max ${maxFileSizeMB} MB)`);
+                }
+            }
+
+            //----------------------
+            // Submit
+            //----------------------
+            $('#uploadForm').on('submit', function (e) {
+                e.preventDefault(); // prevent defualt form submit
+
+                $('#fileInputLabel').hide();
+                $('#dropArea').hide();
+                $('#submitLabel').hide();
+                $('#message').hide();
+
+                var formData = new FormData(this);
+                var xhr = new XMLHttpRequest(); // AJAX-request
+
+                // Check uploading progress
+                xhr.upload.addEventListener('progress', function (event) {
+                    if (event.lengthComputable) { // is total computable
+                        var percentage = Math.floor((event.loaded / event.total) * 100);
+                        $('#progressContainer').show();
+                        $('#progressBar').css('width', percentage + '%');
+                        $('#status').text('Uploading... ' + percentage + '%');
+                        if (percentage == 100)
+                            $('#serverProcessing').show();
+                    }
+                });
+
+                // upload completed
+                xhr.onload = function () {
+                    if (xhr.status === 200)
+                    {
+                        $('#progressContainer').hide();
+                        $('#serverProcessing').hide();
+                        $('#status').text('Status');
+
+                        // get Message, URL, QR-code from the response
+                        var response = JSON.parse(xhr.responseText);
+                        if (response.message)
+                        {
+                            $('#message').show();
+                            $('#message').text(response.message);
+                        }
+                        if (response.url)
+                        {
+                            $('#url').text(response.url);
+                            $('#copyUrl').show();
+                        }
+                        if (response.qrCode)
+                        {
+                            let qrCode = addRoundedCornersToRects(response.qrCode);
+                            $('#qrCode').html(qrCode);
+                        }
+                    }
+                    else
+                    {
+                        $('#progressContainer').hide();
+                        $('#serverProcessing').hide();
+                        $('#status').css('background', errorColor);
+                        $('#status').text('Upload error!');
+                        var response = JSON.parse(xhr.responseText);
+                        if (response.message)
+                        {
+                            $('#message').show();
+                            $('#message').css('color', errorColor);
+                            $('#message').text(response.message);
+                        }
+                    }
+                };
+
+                // open request
+                xhr.open('POST', '/Home/Upload', true);
+                // send form data
+                xhr.send(formData);
+            });
+
+            //----------------------
+            // Copy link url in buffer
+            //----------------------
+            $('#copyUrl').on('click', function () {
+                const urlText = $('#url').text();
+                if (urlText) {
+                    navigator.clipboard.writeText(urlText).then(function() {
+                        $('#message').show();
+                        $('#message').text('Link copied to clipboard!');
+                    }, function(err) {
+                        $('#message').show();
+                        $('#message').text('Failed to copy link: ' + err);
+                    });
+                }
+            });
+
+
+        });
+    </script>
+
+</body>
+</html>
