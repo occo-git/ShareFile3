@@ -14,6 +14,7 @@ namespace ShareFile.Models
         public string UniqueFileName { get; private set; }
         public long Length { get; private set; }
         public int Duration { get; private set; } // minutes
+        public DateTime ExpireDate { get; private set; }
         public string Url { get; private set; } = string.Empty;
 
         [BsonIgnore]
@@ -29,6 +30,7 @@ namespace ShareFile.Models
             UniqueFileName = $"{Name}_{GuidId}_{Timestamp}{Extension}";
             Length = file.Length;
             Duration = duration;
+            ExpireDate = Date.AddMinutes(duration);
         }
 
         public void ApplyUrl(string url)

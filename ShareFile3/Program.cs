@@ -37,8 +37,9 @@ namespace ShareFile
             #region Add services to the container
             builder.Services.AddSingleton<KeyVaultService>();
             builder.Services.AddSingleton<CosmosDbService>();
-            builder.Services.AddScoped<IShareFileService, ShareFileService>(); // Регистрирует сервис FileShare в контейнер зависимостей 
+            builder.Services.AddSingleton<BlobStorageService>();
             builder.Services.AddSingleton<SpeedLinkService>(); // short url service  
+            builder.Services.AddScoped<IShareFileService, ShareFileService>(); // Регистрирует сервис FileShare в контейнер зависимостей 
             builder.Services.AddControllersWithViews(); // Добавляет поддержку контроллеров MVC с представлениями            
             builder.Services.AddControllers(); // Добавляет поддержку контроллеров API 
             builder.Services.AddEndpointsApiExplorer(); // Необходим для автоматического обнаружения конечных точек API            
